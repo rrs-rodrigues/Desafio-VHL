@@ -13,10 +13,10 @@ while [ ! -f /vagrant/node-token ]; do
   sleep 3
 done
 
-TOKEN=$(sudo cat /vagrant/node-token)
+TOKEN=$(sudo cat /vagrant/node-token | tr -d '\r\n ')
 
 echo "[2/2] Instando K3s..."
 curl -sfL https://get.k3s.io | K3S_URL=https://${MASTER_IP}:6443 K3S_TOKEN=${TOKEN} sh -s - agent \
-    --node-ip=${WORKER_IP}
+  --node-ip=${WORKER_IP}
 
 echo "Node worker pronto!"
