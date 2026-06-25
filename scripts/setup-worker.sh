@@ -2,8 +2,8 @@
 
 set -e
 
-MASTER_IP=192.168.56.100
-WORKER_IP=192.168.56.101
+MASTER_IP=192.168.56.10
+WORKER_IP=192.168.56.11
 
 echo "Configurando node worker com IP: $WORKER_IP"
 

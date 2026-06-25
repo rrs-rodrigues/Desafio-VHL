@@ -2,14 +2,14 @@
 
 set -e
 
-MASTER_IP=192.168.56.100
+MASTER_IP=192.168.56.10
 
 echo "Configurando node master com IP: $MASTER_IP"
 
 echo "[1/3] Instando K3s..."
 curl -sfL https://get.k3s.io | sh -s - server \
     --node-ip=${MASTER_IP} \
-    --bind-address=192.168.56.100 \
+    --bind-address=192.168.56.10 \
     --advertise-address=${MASTER_IP} \
     --write-kubeconfig-mode=644
 
