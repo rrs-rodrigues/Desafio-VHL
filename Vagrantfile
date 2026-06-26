@@ -6,7 +6,7 @@ Vagrant.configure("2") do |config|
         master.vm.hostname = "master"
         master.vm.network "private_network", ip: "192.168.56.10"
         master.vm.network "forwarded_port", guest: 6443, host: 6443
-
+        master.vm.network "forwarded_port", guest: 30080, host: 30080
         master.vm.provider "virtualbox" do |vb|
             vb.name = "k8s-master"
             vb.memory = "2048"

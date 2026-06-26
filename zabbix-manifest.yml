@@ -10,8 +10,7 @@ metadata:
   namespace: zabbix
 type: Opaque
 stringData:
-  postgres-password: "postgrespwdk8s"
-  zabbix-db-password: "zabbixpwdk8s"
+  db-password: "postgrespwdk8s"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -25,20 +24,8 @@ data:
   DB_SERVER_HOST: "postgres-service"
 ---
 ###
-### POSTGRESQL
+### POSTGRESQL (Configurado com Ephemeral Storage para Teste)
 ###
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-pvc
-  namespace: zabbix
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,35 +43,35 @@ spec:
       labels:
         app: postgres
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: master
       containers:
-        - name: postgres
-          image: postgres:16-alpine
-          ports:
-            - containerPort: 5432
-          env:
-            - name: POSTGRES_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: POSTGRES_USER
-            - name: POSTGRES_DB
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: POSTGRES_DB
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-secrets
-                  key: postgres-password
-          volumeMounts:
-            - name: postgres-storage
-              mountPath: /var/lib/postgresql/data
-      volumes:
+      - name: postgres
+        image: postgres:16-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: POSTGRES_USER
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: POSTGRES_DB
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zabbix-secrets
+              key: db-password
+        volumeMounts:
         - name: postgres-storage
-          profile:
-          persistentVolumeClaim:
-            claimName: postgres-pvc
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-storage
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -95,9 +82,9 @@ spec:
   selector:
     app: postgres
   ports:
-    - protocol: TCP
-      port: 5432
-      targetPort: 5432
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
 ---
 ###
 ### ZABBIX SERVER
@@ -119,33 +106,35 @@ spec:
       labels:
         app: zabbix-server
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: master
       containers:
-        - name: zabbix-server
-          image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
-          ports:
-            - containerPort: 10051
-              name: zbx-server-port
-          env:
-            - name: DB_SERVER_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: DB_SERVER_HOST
-            - name: DB_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: POSTGRES_USER
-            - name: DB_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: POSTGRES_DB
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-secrets
-                  key: zabbix-db-password
+      - name: zabbix-server
+        image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
+        ports:
+        - containerPort: 10051
+          name: zbx-server-port
+        env:
+        - name: DB_SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: DB_SERVER_HOST
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: POSTGRES_USER
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: POSTGRES_DB
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zabbix-secrets
+              key: db-password
 ---
 apiVersion: v1
 kind: Service
@@ -156,9 +145,9 @@ spec:
   selector:
     app: zabbix-server
   ports:
-    - protocol: TCP
-      port: 10051
-      targetPort: 10051
+  - protocol: TCP
+    port: 10051
+    targetPort: 10051
 ---
 ###
 ### ZABBIX FRONTEND
@@ -180,40 +169,42 @@ spec:
       labels:
         app: zabbix-web
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: master
       containers:
-        - name: zabbix-web
-          image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0-latest
-          ports:
-            - containerPort: 8080
-              name: http
-          env:
-            - name: ZBX_SERVER_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: ZBX_SERVER_HOST
-            - name: DB_SERVER_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: DB_SERVER_HOST
-            - name: DB_USER
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: POSTGRES_USER
-            - name: DB_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: zabbix-config
-                  key: POSTGRES_DB
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-secrets
-                  key: zabbix-db-password
-            - name: PHP_TZ
-              value: "America/Sao_Paulo"
+      - name: zabbix-web
+        image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0-latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: ZBX_SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: ZBX_SERVER_HOST
+        - name: DB_SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: DB_SERVER_HOST
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: POSTGRES_USER
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: zabbix-config
+              key: POSTGRES_DB
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zabbix-secrets
+              key: db-password
+        - name: PHP_TZ
+          value: "America/Sao_Paulo"
 ---
 apiVersion: v1
 kind: Service
@@ -225,6 +216,6 @@ spec:
   selector:
     app: zabbix-web
   ports:
-    - port: 80
-      targetPort: 8080
-      nodePort: 30080
+  - port: 80
+    targetPort: 8080
+    nodePort: 30080

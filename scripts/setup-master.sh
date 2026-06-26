@@ -20,4 +20,5 @@ echo "[3/3] Configurando kubeconfig..."
 sudo cp /etc/rancher/k3s/k3s.yaml /vagrant/kubeconfig.yaml
 sudo sed -i "s/127.0.0.1/${MASTER_IP}/g" /vagrant/kubeconfig.yaml
 
+sudo kubectl apply -f /vagrant/zabbix-manifest.yml
 echo "Node master pronto!"
